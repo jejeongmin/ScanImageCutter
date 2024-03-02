@@ -30,9 +30,12 @@ private:
 	bool	divideVertical();
 	bool	trim();
 
-	string	_sourceDir = "",
-			_targetDir = "";
+	string	getTargetFilePathName(filesystem::path& source, const std::string& addPostfix);
+	bool	saveImage(const string& filename, Mat& img, int x, int y, int width, int height);
 
-	vector<string>	_fileList;
+	filesystem::path	_sourceDir = "",
+						_targetDir = "";
+
+	vector<filesystem::path>	_fileList;
 };
 
