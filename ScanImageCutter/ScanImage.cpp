@@ -15,13 +15,13 @@ bool ScanImage::init(const char* sourceDir, const char* targetDir)
 {
 	if (nullptr == sourceDir)
 	{
-		cerr << "sourceDir is nullptr" << endl;
+		cout << "sourceDir is nullptr" << endl;
 		return false;
 	}
 
 	if (nullptr == targetDir)
 	{
-		cerr << "targetDir is nullptr" << endl;
+		cout << "targetDir is nullptr" << endl;
 		return false;
 	}
 
@@ -34,19 +34,19 @@ bool ScanImage::init(const char* sourceDir, const char* targetDir)
 	{
 		if (false == filesystem::is_directory(_sourceDir.string()))
 		{
-			cerr << "sourceDir(" << _sourceDir << ") is not directory" << endl;
+			cout << "sourceDir(" << _sourceDir << ") is not directory" << endl;
 			return false;
 		}
 
 		if (false == filesystem::is_directory(_targetDir.string()))
 		{
-			cerr << "targetDir(" << _targetDir << ") is not directory" << endl;
+			cout << "targetDir(" << _targetDir << ") is not directory" << endl;
 			return false;
 		}
 	}
 	catch (const filesystem::filesystem_error& ex)
 	{
-		cerr << "filesystem exception : " << ex.what() << endl;
+		cout << "filesystem exception : " << ex.what() << endl;
 		return false;
 	}
 
@@ -55,7 +55,7 @@ bool ScanImage::init(const char* sourceDir, const char* targetDir)
 	
 	if (_fileList.empty())
 	{
-		cerr << "there are no files in sourcedir" << endl;
+		cout << "there are no files in sourcedir" << endl;
 		return false;
 	}
 
@@ -84,7 +84,7 @@ bool ScanImage::run(const char* command)
 		trim();
 		break;
 	default:
-		cerr << "unknown command" << endl;
+		cout << "unknown command" << endl;
 		break;
 	}
 
@@ -126,7 +126,7 @@ bool ScanImage::divideVertical()
 		Mat img = imread(filename.string(), IMREAD_COLOR);
 		if (img.empty())
 		{
-			cerr << "cannot read image : " << filename << endl;
+			cout << "cannot read image : " << filename << endl;
 			continue;
 		}
 
@@ -134,7 +134,9 @@ bool ScanImage::divideVertical()
 
 		int curXPos = 0;
 		int maxBGRSum = 0;
-		for (int x = 0; x < img.cols; ++x)
+		auto [startPos, endPos] = getScanRangeOffset(img.cols);
+
+		for (int x = startPos; x < endPos; ++x)
 		{
 			int columnBGRSum = 0;
 
@@ -154,7 +156,7 @@ bool ScanImage::divideVertical()
 
 		if (curXPos <= 0)
 		{
-			cerr << "cannot cut image : " << filename << " curX : " << curXPos << ", minBGRSum : " << maxBGRSum << endl;
+			cout << "cannot cut image : " << filename << " curX : " << curXPos << ", minBGRSum : " << maxBGRSum << endl;
 			continue;
 		}
 
@@ -170,6 +172,52 @@ bool ScanImage::divideVertical()
 
 bool ScanImage::divideHorizontal()
 {
+	for (auto filename : _fileList)
+	{
+		Mat img = imread(filename.string(), IMREAD_COLOR);
+		if (img.empty())
+		{
+			cout << "cannot read image : " << filename << endl;
+			continue;
+		}
+
+		cout << filename << " read successfully. width : " << img.cols << ", height : " << img.rows << endl;
+
+		int curYPos = 0;
+		int maxBGRSum = 0;
+		auto [startPos, endPos] = getScanRangeOffset(img.rows);
+
+		for (int y = startPos; y < endPos; ++y)
+		{
+			int columnBGRSum = 0;
+
+			for (int x = 0; x < img.cols; ++x)
+			{
+				cv::Vec3b pixel = img.at<cv::Vec3b>(y, x);
+
+				columnBGRSum += static_cast<int>(pixel[0] + pixel[1] + pixel[2]);
+			}
+
+			if (maxBGRSum < columnBGRSum)
+			{
+				maxBGRSum = columnBGRSum;
+				curYPos = y;
+			}
+		}
+
+		if (curYPos <= 0)
+		{
+			cout << "cannot cut image : " << filename << " curY : " << curYPos << ", minBGRSum : " << maxBGRSum << endl;
+			continue;
+		}
+
+		std::string filenameLeftCut = getTargetFilePathName(filename, "_top");
+		std::string filenameRightCut = getTargetFilePathName(filename, "_bottom");
+
+		saveImage(filenameLeftCut, img, 0, 0, img.cols, curYPos);
+		saveImage(filenameRightCut, img, 0, curYPos, img.cols, img.rows - curYPos);
+	}
+
 	return true;
 }
 
@@ -197,9 +245,18 @@ bool ScanImage::saveImage(const string& filename, Mat& img, int x, int y, int wi
 
 	if (!cv::imwrite(filename, roi))
 	{
-		cerr << "can not save img " << filename << std::endl;
+		cout << "can not save img " << filename << std::endl;
 		return false;
 	}
 
 	return true;
+}
+
+std::pair<int, int> ScanImage::getScanRangeOffset(int range)
+{
+	int	offset = (range / 5);
+	int startPos = offset;
+	int	endPos = range - offset;
+		
+	return std::make_pair(startPos, endPos);
 }

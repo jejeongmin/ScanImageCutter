@@ -25,6 +25,7 @@ private:
 
 	bool	getFilesWithExtension(const std::string& extension);
 	CommandType	getCommandType(const std::string& command);
+	std::pair<int, int>	getScanRangeOffset(int range);
 
 	bool	divideHorizontal();
 	bool	divideVertical();
@@ -32,6 +33,7 @@ private:
 
 	string	getTargetFilePathName(filesystem::path& source, const std::string& addPostfix);
 	bool	saveImage(const string& filename, Mat& img, int x, int y, int width, int height);
+	
 
 	filesystem::path	_sourceDir = "",
 						_targetDir = "";
