@@ -223,6 +223,126 @@ bool ScanImage::divideHorizontal()
 
 bool ScanImage::trim()
 {
+	for (auto filename : _fileList)
+	{
+		Mat img = imread(filename.string(), IMREAD_COLOR);
+		if (img.empty())
+		{
+			cout << "cannot read image : " << filename << endl;
+			continue;
+		}
+
+		cout << filename << " read successfully. width : " << img.cols << ", height : " << img.rows << endl;
+
+		Rect	rect;
+		if (false == getTrimRect(img, rect))
+		{
+			cout << filename << " get trim failed " << rect << endl;
+			return false;
+		}
+
+		std::string filenameTrim = getTargetFilePathName(filename, "_trim");
+
+		saveImage(filenameTrim, img, rect.x, rect.y, rect.width, rect.height);
+	}
+
+	return true;
+}
+
+bool ScanImage::getTrimRect(const Mat& img, Rect& rect)
+{
+	int	centerX = img.cols / 2;
+	int	centerY = img.rows / 2;
+	
+	const int WhiteVerticalSum = (250+250+250) * img.rows;
+	const int WhiteHorizontalSum = (250+250+250) * img.cols;
+
+	// find left
+	rect.x = 0;
+	for (int x = centerX; x > 0; --x)
+	{
+		int columnBGRSum = 0;
+
+		for (int y = 0; y < img.rows; ++y)
+		{
+			cv::Vec3b pixel = img.at<cv::Vec3b>(y, x);
+
+			columnBGRSum += static_cast<int>(pixel[0] + pixel[1] + pixel[2]);
+		}
+
+		if (columnBGRSum > WhiteVerticalSum)
+		{
+			rect.x = x;
+			break;
+		}
+	}
+
+	// find right
+	rect.width = img.cols - rect.x;
+	for (int x = centerX; x<img.cols; ++x)
+	{
+		int columnBGRSum = 0;
+
+		for (int y = 0; y < img.rows; ++y)
+		{
+			cv::Vec3b pixel = img.at<cv::Vec3b>(y, x);
+
+			columnBGRSum += static_cast<int>(pixel[0] + pixel[1] + pixel[2]);
+		}
+
+		if (columnBGRSum > WhiteVerticalSum)
+		{
+			rect.width = x - rect.x;
+			break;
+		}
+	}
+
+	// find top
+	rect.y = 0;
+	for (int y = centerY; y > 0; --y)
+	{
+		int columnBGRSum = 0;
+
+		for (int x = 0; x < img.cols; ++x)
+		{
+			cv::Vec3b pixel = img.at<cv::Vec3b>(y, x);
+
+			columnBGRSum += static_cast<int>(pixel[0] + pixel[1] + pixel[2]);
+		}
+
+		if (columnBGRSum > WhiteHorizontalSum)
+		{
+			rect.y = y;
+			break;
+		}
+	}
+
+	// find height
+	rect.height = img.rows - rect.y;
+	for (int y = centerY; y < img.rows; ++y)
+	{
+		int columnBGRSum = 0;
+
+		for (int x = 0; x < img.cols; ++x)
+		{
+			cv::Vec3b pixel = img.at<cv::Vec3b>(y, x);
+
+			columnBGRSum += static_cast<int>(pixel[0] + pixel[1] + pixel[2]);
+		}
+
+		if (columnBGRSum > WhiteHorizontalSum)
+		{
+			rect.height = y - rect.y;
+			break;
+		}
+	}
+
+	if (rect.x < 0 || rect.width < 0 || rect.y < 0 || rect.height < 0)
+	{
+		cout << "invald rect " << rect << endl;
+		return false;
+	}
+
 	return true;
 }
 
@@ -238,7 +358,7 @@ string ScanImage::getTargetFilePathName(filesystem::path& source, const std::str
 	return targetFilePathName;
 }
 
-bool ScanImage::saveImage(const string& filename, Mat& img, int x, int y, int width, int height)
+bool ScanImage::saveImage(const string& filename, const Mat& img, int x, int y, int width, int height)
 {
 	cv::Rect	regionOfInterest(x, y, width, height);
 	cv::Mat		roi = img(regionOfInterest);

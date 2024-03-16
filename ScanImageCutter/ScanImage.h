@@ -23,17 +23,17 @@ public:
 
 private:
 
-	bool	getFilesWithExtension(const std::string& extension);
-	CommandType	getCommandType(const std::string& command);
-	std::pair<int, int>	getScanRangeOffset(int range);
-
 	bool	divideHorizontal();
 	bool	divideVertical();
 	bool	trim();
 
-	string	getTargetFilePathName(filesystem::path& source, const std::string& addPostfix);
-	bool	saveImage(const string& filename, Mat& img, int x, int y, int width, int height);
+	bool	getFilesWithExtension(const std::string& extension);
+	CommandType	getCommandType(const std::string& command);
+	std::pair<int, int>	getScanRangeOffset(int range);
+	bool	getTrimRect(const Mat& img, Rect& rect);
 	
+	string	getTargetFilePathName(filesystem::path& source, const std::string& addPostfix);
+	bool	saveImage(const string& filename, const Mat& img, int x, int y, int width, int height);
 
 	filesystem::path	_sourceDir = "",
 						_targetDir = "";
