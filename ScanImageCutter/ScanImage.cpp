@@ -251,15 +251,16 @@ bool ScanImage::trim()
 
 bool ScanImage::getTrimRect(const Mat& img, Rect& rect)
 {
-	int	centerX = img.cols / 2;
-	int	centerY = img.rows / 2;
+	// 딱 가운데 지점이 아니라, 가운데서부터 4분할 해나가면서 recursive 하게 해서 image 가 존재하는 지점의 위치를 찾아냄
+	Point trimOffset;
+	bool result = getTrimOffset(img, Rect(0, 0, img.cols, img.rows), trimOffset, 3);
 	
 	const int WhiteVerticalSum = (250+250+250) * img.rows;
 	const int WhiteHorizontalSum = (250+250+250) * img.cols;
 
 	// find left
 	rect.x = 0;
-	for (int x = centerX; x > 0; --x)
+	for (int x = trimOffset.x; x > 0; --x)
 	{
 		int columnBGRSum = 0;
 
@@ -279,7 +280,7 @@ bool ScanImage::getTrimRect(const Mat& img, Rect& rect)
 
 	// find right
 	rect.width = img.cols - rect.x;
-	for (int x = centerX; x<img.cols; ++x)
+	for (int x = trimOffset.x; x<img.cols; ++x)
 	{
 		int columnBGRSum = 0;
 
@@ -299,7 +300,7 @@ bool ScanImage::getTrimRect(const Mat& img, Rect& rect)
 
 	// find top
 	rect.y = 0;
-	for (int y = centerY; y > 0; --y)
+	for (int y = trimOffset.y; y > 0; --y)
 	{
 		int columnBGRSum = 0;
 
@@ -319,7 +320,7 @@ bool ScanImage::getTrimRect(const Mat& img, Rect& rect)
 
 	// find height
 	rect.height = img.rows - rect.y;
-	for (int y = centerY; y < img.rows; ++y)
+	for (int y = trimOffset.y; y < img.rows; ++y)
 	{
 		int columnBGRSum = 0;
 
@@ -379,4 +380,40 @@ std::pair<int, int> ScanImage::getScanRangeOffset(int range)
 	int	endPos = range - offset;
 		
 	return std::make_pair(startPos, endPos);
+}
+
+bool ScanImage::getTrimOffset(const Mat& img, Rect rect, Point& offset, int depth)
+{
+	if (depth == 0)
+		return false;
+
+	int width = (rect.width / 2);
+	int height = (rect.height / 2);
+
+	offset.x = rect.x + width;
+	offset.y = rect.y + height;
+
+	cv::Vec3b pixel = img.at<cv::Vec3b>(offset.y, offset.x);
+
+	int pixelBGRSum = static_cast<int>(pixel[0] + pixel[1] + pixel[2]);
+	if (pixelBGRSum < _whiteBGRSum)
+		return true;
+
+	Rect topLeft = { rect.x, rect.y, width, height };
+	if (getTrimOffset(img, topLeft, offset, depth - 1))
+		return true;
+
+	Rect topRight = { offset.x, rect.y, width, height };
+	if (getTrimOffset(img, topRight, offset, depth - 1))
+		return true;
+
+	Rect bottomLeft = { rect.x, offset.y, width, height };
+	if (getTrimOffset(img, bottomLeft, offset, depth - 1))
+		return true;
+
+	Rect bottomRight = { offset.x, offset.y, width, height };
+	if (getTrimOffset(img, bottomRight, offset, depth - 1))
+		return true;
+
+	return false;
 }

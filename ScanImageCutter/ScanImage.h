@@ -30,6 +30,7 @@ private:
 	bool	getFilesWithExtension(const std::string& extension);
 	CommandType	getCommandType(const std::string& command);
 	std::pair<int, int>	getScanRangeOffset(int range);
+	bool	getTrimOffset(const Mat& img, Rect rect, Point& offset, int depth = 2);
 	bool	getTrimRect(const Mat& img, Rect& rect);
 	
 	string	getTargetFilePathName(filesystem::path& source, const std::string& addPostfix);
@@ -39,5 +40,7 @@ private:
 						_targetDir = "";
 
 	vector<filesystem::path>	_fileList;
+
+	const int _whiteBGRSum = 254 + 254 + 254;
 };
 
